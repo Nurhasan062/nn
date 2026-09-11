@@ -1,0 +1,326 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API for the Campus Clubs Hub student directory and events platform
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: dashboard
+    description: Student overview data
+  - name: clubs
+    description: Club directory operations
+  - name: events
+    description: Campus event discovery and registration
+  - name: saved
+    description: Saved clubs for the current student
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [dashboard]
+      summary: Get the student dashboard summary
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dashboard"
+  /clubs:
+    get:
+      operationId: listClubs
+      tags: [clubs]
+      summary: List and filter clubs
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [popular, alphabetical, active]
+            default: popular
+      responses:
+        "200":
+          description: Matching clubs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Club"
+  /clubs/{id}:
+    get:
+      operationId: getClub
+      tags: [clubs]
+      summary: Get a club profile
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Club profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubDetail"
+        "404":
+          description: Club not found
+  /events:
+    get:
+      operationId: listEvents
+      tags: [events]
+      summary: List upcoming events
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: timeframe
+          in: query
+          schema:
+            type: string
+            enum: [week, month, all]
+            default: all
+      responses:
+        "200":
+          description: Upcoming events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Event"
+  /events/{id}:
+    get:
+      operationId: getEvent
+      tags: [events]
+      summary: Get an event with registration details
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Event details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventDetail"
+        "404":
+          description: Event not found
+  /events/{id}/register:
+    post:
+      operationId: registerForEvent
+      tags: [events]
+      summary: Register a student for an event
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegistrationInput"
+      responses:
+        "201":
+          description: Registration created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Registration"
+        "409":
+          description: Student is already registered
+  /saved-clubs:
+    get:
+      operationId: listSavedClubs
+      tags: [saved]
+      summary: List clubs saved by the current student
+      responses:
+        "200":
+          description: Saved clubs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Club"
+  /clubs/{id}/save:
+    post:
+      operationId: saveClub
+      tags: [saved]
+      summary: Save a club
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "201":
+          description: Saved club
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Club"
+    delete:
+      operationId: unsaveClub
+      tags: [saved]
+      summary: Remove a saved club
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Club removed from saved list
+components:
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    Club:
+      type: object
+      required: [id, name, shortName, category, tagline, officeLocation, memberCount, accent, isVerified]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        shortName: { type: string }
+        category: { type: string }
+        tagline: { type: string }
+        officeLocation: { type: string }
+        memberCount: { type: integer }
+        accent: { type: string }
+        isVerified: { type: boolean }
+        isSaved: { type: boolean }
+    ClubRole:
+      type: object
+      required: [id, title, responsibilities, skills, openings]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        responsibilities:
+          type: array
+          items: { type: string }
+        skills:
+          type: array
+          items: { type: string }
+        openings: { type: integer }
+    ClubDetail:
+      allOf:
+        - $ref: "#/components/schemas/Club"
+        - type: object
+          required: [description, eligibility, roles, meetingSchedule, socials, joinedCount]
+          properties:
+            description: { type: string }
+            eligibility: { type: string }
+            roles:
+              type: array
+              items: { $ref: "#/components/schemas/ClubRole" }
+            meetingSchedule: { type: string }
+            socials:
+              type: array
+              items: { type: string }
+            joinedCount: { type: integer }
+    Event:
+      type: object
+      required: [id, title, clubId, clubName, category, startsAt, endsAt, venue, entryFee, dutyLeave, spotsLeft, registrationRequired, accent]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        clubId: { type: integer }
+        clubName: { type: string }
+        category: { type: string }
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time }
+        venue: { type: string }
+        entryFee: { type: number }
+        dutyLeave: { type: boolean }
+        spotsLeft: { type: integer }
+        registrationRequired: { type: boolean }
+        accent: { type: string }
+        description: { type: string }
+    EventDetail:
+      allOf:
+        - $ref: "#/components/schemas/Event"
+        - type: object
+          required: [registrationCriteria, organizerEmail, registeredCount]
+          properties:
+            registrationCriteria: { type: string }
+            organizerEmail: { type: string }
+            registeredCount: { type: integer }
+    RegistrationInput:
+      type: object
+      required: [studentName, studentEmail, year, department]
+      properties:
+        studentName: { type: string, minLength: 2 }
+        studentEmail: { type: string, format: email }
+        year: { type: string }
+        department: { type: string }
+    Registration:
+      type: object
+      required: [id, eventId, studentName, studentEmail, status, createdAt]
+      properties:
+        id: { type: integer }
+        eventId: { type: integer }
+        studentName: { type: string }
+        studentEmail: { type: string }
+        status: { type: string }
+        createdAt: { type: string, format: date-time }
+    Dashboard:
+      type: object
+      required: [clubCount, eventCount, savedCount, thisWeekEvents, categories, featuredClubs, nextEvent]
+      properties:
+        clubCount: { type: integer }
+        eventCount: { type: integer }
+        savedCount: { type: integer }
+        thisWeekEvents: { type: integer }
+        categories:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoryCount"
+        featuredClubs:
+          type: array
+          items:
+            $ref: "#/components/schemas/Club"
+        nextEvent:
+          oneOf:
+            - $ref: "#/components/schemas/Event"
+            - type: "null"
+    CategoryCount:
+      type: object
+      required: [category, count]
+      properties:
+        category: { type: string }
+        count: { type: integer }
+
