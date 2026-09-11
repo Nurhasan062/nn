@@ -1,1 +1,6 @@
-console.log("Hello from @workspace/scripts");
+
+function greet(name: string): string {
+  return `Hello, ${name}! Welcome to TypeScript.`;
+}
+
+console.log(greet("Sk"));
